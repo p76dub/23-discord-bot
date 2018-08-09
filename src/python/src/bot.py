@@ -27,6 +27,7 @@ class TwentyThreeBot(discord.Client):
             ConsultCommand(self._adapter, self),
             SearchCommand(self._adapter, self),
             DownloadCommand(self._adapter, self),
+            PlaitCommand(self._adapter, self),
             RemoveCommand(self._adapter, self),
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
@@ -133,7 +134,7 @@ class CategoriesCommand(AbstractCommand):
 
     @staticmethod
     def help():
-        return "/23categories\tAffiche l'ensemble des catégories connues."
+        return "**/23categories**\tAffiche l'ensemble des catégories connues."
 
 
 class SearchCommand(AbstractCommand):
@@ -241,9 +242,22 @@ class HelpCommand(AbstractCommand):
                "sinon affiche celle de toutes les commandes disponibles (y compris celle-ci)."
 
 
+class PlaitCommand(AbstractCommand):
+
+    COMMAND_PATTERN = re.compile(r"/yop")
+    COMMAND_NAME = "yop"
+
+    async def _do_match(self, match, msg):
+        await self._client.send_message(msg.channel, "plait !")
+
+    @staticmethod
+    def help():
+        return "**/yop**\tAffiche juste \"plait !\""
+
+
 if __name__ == '__main__':
     import json
 
-    conf = json.load(open("../../../bot.conf"))
+    conf = json.load(open("bot.conf"))
     bot = TwentyThreeBot(conf)
     bot.run(conf["token"])
