@@ -22,14 +22,14 @@ class TwentyThreeBot(discord.Client):
 
     def _load_commands(self):
         self._commands = [
-            AddAbstractCommand(self._adapter, self),
-            CategoriesAbstractCommand(self._adapter, self),
-            ConsultAbstractCommand(self._adapter, self),
-            SearchAbstractCommand(self._adapter, self),
-            DownloadAbstractCommand(self._adapter, self),
-            RemoveAbstractCommand(self._adapter, self),
+            AddCommand(self._adapter, self),
+            CategoriesCommand(self._adapter, self),
+            ConsultCommand(self._adapter, self),
+            SearchCommand(self._adapter, self),
+            DownloadCommand(self._adapter, self),
+            RemoveCommand(self._adapter, self),
         ]
-        self._commands.append(HelpAbstractCommand(self._adapter, self, self._commands))
+        self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
     async def on_message(self, message):
         for _command in self._commands:
@@ -68,7 +68,7 @@ class AbstractCommand(object):
         return ""
 
 
-class AddAbstractCommand(AbstractCommand):
+class AddCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23add\s(\S+)\s(.+)$")
     ADDED_MESSAGE = "Le fait a bien été ajouté ! :D"
@@ -91,7 +91,7 @@ class AddAbstractCommand(AbstractCommand):
                "n'existe pas, elle sera créée."
 
 
-class ConsultAbstractCommand(AbstractCommand):
+class ConsultCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23consult\s(\S+)(\s(\d)+)?$")
     COMMAND_NAME = "23consult"
@@ -116,7 +116,7 @@ class ConsultAbstractCommand(AbstractCommand):
                "sera affiché."
 
 
-class CategoriesAbstractCommand(AbstractCommand):
+class CategoriesCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23categories$")
     COMMAND_NAME = "23categories"
@@ -136,7 +136,7 @@ class CategoriesAbstractCommand(AbstractCommand):
         return "/23categories\tAffiche l'ensemble des catégories connues."
 
 
-class SearchAbstractCommand(AbstractCommand):
+class SearchCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23search\s(.+)$")
     COMMAND_NAME = "23search"
@@ -162,7 +162,7 @@ class SearchAbstractCommand(AbstractCommand):
                "PATTERN."
 
 
-class DownloadAbstractCommand(AbstractCommand):
+class DownloadCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23download$")
     COMMAND_NAME = "23download"
@@ -190,7 +190,7 @@ class DownloadAbstractCommand(AbstractCommand):
                "texte."
 
 
-class RemoveAbstractCommand(AbstractCommand):
+class RemoveCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23remove\s(\S+)(\s(\d)+)?$")
     FACT_REMOVED_MSG = "Le fait a été supprimé ! :D"
@@ -215,13 +215,13 @@ class RemoveAbstractCommand(AbstractCommand):
                "faits associés)."
 
 
-class HelpAbstractCommand(AbstractCommand):
+class HelpCommand(AbstractCommand):
 
     COMMAND_PATTERN = re.compile(r"^/23help(\s(\S+))?$")
     COMMAND_NAME = "23help"
 
     def __init__(self, _adapter, client, commands):
-        super(HelpAbstractCommand, self).__init__(_adapter, client)
+        super(HelpCommand, self).__init__(_adapter, client)
         self._commands = commands
 
     async def _do_match(self, match, msg):
