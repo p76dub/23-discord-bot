@@ -256,8 +256,9 @@ class PlaitCommand(AbstractCommand):
 
 
 if __name__ == '__main__':
-    import json
-
-    conf = json.load(open("bot.conf"))
+    conf = {
+        "db": os.environ["DB"],
+        "token": os.environ["TOKEN"]
+    }
     bot = TwentyThreeBot(conf)
     bot.run(conf["token"])
