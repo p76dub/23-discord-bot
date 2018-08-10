@@ -248,11 +248,11 @@ class PlaitCommand(AbstractCommand):
     COMMAND_NAME = "yop"
 
     async def _do_match(self, match, msg):
-        await self._client.send_message(msg.channel, "plait !")
+        await self._client.send_message(msg.channel, "lait !")
 
     @staticmethod
     def help():
-        return "**/yop**\tAffiche juste \"plait !\""
+        return "**/yop**\tAffiche juste \"lait !\""
 
 
 if __name__ == '__main__':
