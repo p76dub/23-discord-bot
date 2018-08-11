@@ -139,7 +139,7 @@ class AddCommand(AbstractCommand):
         category, content = match.group(1, 2)
         try:
             self._adapter.add_fact(content, [category])
-        except sqlite3.IntegrityError:  # FIXME: use a custom exception
+        except adapter.DuplicateException:
             await self._client.send_message(msg.channel, self.DOUBLE_MSG)
         except Exception as e:
             await self._client.send_message(msg.channel, self.ERROR_MSG)

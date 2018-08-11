@@ -41,23 +41,25 @@ class Adapter(object):
         raise NotImplementedError()
 
 
+class DuplicateException(Exception):
+    pass
+
+
 class SQLite3Adapter(Adapter):
 
     def __init__(self, db_location):
-        exists = os.path.isfile(db_location)
         self._connection = sqlite3.connect(db_location)
-        if not exists:
-            self._create_database()
+        self._create_database()
 
     def _create_database(self):
         with self._connection as cursor:
-            cursor.execute("""CREATE TABLE categories (
+            cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                            name TEXT NOT NULL UNIQUE)""")
-            cursor.execute("""CREATE TABLE facts (
+            cursor.execute("""CREATE TABLE IF NOT EXISTS facts (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                            name TEXT NOT NULL UNIQUE)""")
-            cursor.execute("""CREATE TABLE entries (
+            cursor.execute("""CREATE TABLE IF NOT EXISTS entries (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                            category_id INTEGER,
                            fact_id INTEGER,
@@ -66,16 +68,20 @@ class SQLite3Adapter(Adapter):
                            CONSTRAINT FK_ENTRY_FACT FOREIGN KEY(fact_id) REFERENCES facts(id)
                            ON DELETE CASCADE,
                            CONSTRAINT UN_CATEGORY_FACT UNIQUE (category_id, fact_id))""")
-            cursor.execute("""CREATE TABLE urls (
+            cursor.execute("""CREATE TABLE IF NOT EXISTS urls (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                            url TEXT NOT NULL)""")
-            cursor.execute("""CREATE TABLE fact_references (
+            cursor.execute("""CREATE TABLE IF NOT EXISTS fact_references (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                            fact_id INTEGER,
                            url_id INTEGER,
                            CONSTRAINT FK_REFERENCE_FACT FOREIGN KEY(fact_id) REFERENCES facts(
                            id),
                            CONSTRAINT FK_REFERENCE_URL FOREIGN KEY(url_id) REFERENCES urls(id))""")
+            cursor.execute("""CREATE TRIGGER IF NOT EXISTS TG_DELETE_FACTS
+                           AFTER DELETE ON entries
+                           WHEN (SELECT count() FROM entries WHERE fact_id == old.fact_id) == 0
+                           BEGIN DELETE FROM facts WHERE facts.id == old.fact_id; END""")
 
     def add_fact(self, fact, categories):
         try:
@@ -89,13 +95,16 @@ class SQLite3Adapter(Adapter):
             except sqlite3.IntegrityError:
                 pass
 
-        with self._connection as cursor:
-            for category in categories:
-                cursor.execute("""INSERT INTO entries(fact_id, category_id)
-                               SELECT facts.id, categories.id
-                               FROM facts, categories
-                               WHERE facts.name == ? AND categories.name == ?""",
-                               (fact, category))
+        try:
+            with self._connection as cursor:
+                for category in categories:
+                    cursor.execute("""INSERT INTO entries(fact_id, category_id)
+                                   SELECT facts.id, categories.id
+                                   FROM facts, categories
+                                   WHERE facts.name == ? AND categories.name == ?""",
+                                   (fact, category))
+        except sqlite3.IntegrityError:
+            raise DuplicateException()
 
     def remove_fact(self, category, line_number):
         fact_name = self.consult(category, line_number)[0]
