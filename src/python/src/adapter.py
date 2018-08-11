@@ -1,51 +1,99 @@
 # -*- coding: utf-8 -*-
 import sqlite3
-import os
-
-
-class _Fact(object):
-
-    def __init__(self, _id, name):
-        self.name = name
-        self.id = _id
-
-
-class _Category(object):
-
-    def __init__(self, _id, name):
-        self.name = name
-        self.id = _id
 
 
 class Adapter(object):
-
+    """
+    Abstract adapter that defines all required methods. Subclasses should implements all of them.
+    """
     def add_fact(self, fact, categories):
+        """
+        Add a new fact into the backend storage. The backend should not allow duplicates and
+        raise a DuplicateException.
+
+        :param fact: the fact the user wants to store
+        :type fact: str
+        :param categories: a list of categories with which the fact is related to.
+        :type categories: list
+        :raise DuplicateException if a
+        """
         raise NotImplementedError()
 
-    def remove_fact(self, category, fact_id):
+    def remove_fact(self, category, line_number):
+        """
+        Remove a fact from a category.
+
+        :param category: the category's name
+        :type category: str
+        :param line_number: the line where the fact is stored
+        :type line_number: int
+        """
         raise NotImplementedError()
 
     def add_category(self, category):
+        """
+        Add a category in the backend storage. Duplicates shouldn't be allowed and trying to make
+        one must raise a DuplicateException
+
+        :param category: the category's name
+        :type category: str
+        :raise DuplicateException
+        """
         raise NotImplementedError()
 
     def search(self, pattern):
+        """
+        Search a fact matching the given pattern. No assumption is made on the pattern format,
+        and so its interpretation is left to the subclass.
+
+        :param pattern: the searched pattern
+        :type pattern: str
+        :return: a list of facts (str) matching the pattern
+        """
         raise NotImplementedError()
 
     def list_categories(self):
+        """
+        List all registered categories in the backend database.
+
+        :return: a list of categories (their name)
+        """
         raise NotImplementedError()
 
-    def consult(self, category, fact_id=None):
+    def consult(self, category, line_number=None):
+        """
+        Consult an entry in the database. If no line number is provided, should display the
+        entire category.
+
+        :param category: category's name
+        :type category: str
+        :param line_number: the line the user wants to consult
+        :type line_number: int
+        :return: a list of strings
+        """
         raise NotImplementedError()
 
     def remove_category(self, category):
+        """
+        Remove a category according to its name.
+
+        :param category: the category's name
+        :type category: str
+        """
         raise NotImplementedError()
 
 
 class DuplicateException(Exception):
+    """
+    A simple exception indicating that the user tried to add a duplicate in the backend database.
+    """
     pass
 
 
 class SQLite3Adapter(Adapter):
+    """
+    This adapter backs data with an SQLite3 database.
+    """
 
     def __init__(self, db_location):
         self._connection = sqlite3.connect(db_location)
@@ -92,7 +140,7 @@ class SQLite3Adapter(Adapter):
         for category in categories:
             try:
                 self.add_category(category)
-            except sqlite3.IntegrityError:
+            except DuplicateException:
                 pass
 
         try:
@@ -115,8 +163,11 @@ class SQLite3Adapter(Adapter):
                            (fact_name, category))
 
     def add_category(self, category):
-        with self._connection as cursor:
-            cursor.execute("""INSERT INTO categories(name) VALUES (?)""", (category,))
+        try:
+            with self._connection as cursor:
+                cursor.execute("""INSERT INTO categories(name) VALUES (?)""", (category,))
+        except sqlite3.IntegrityError:
+            raise DuplicateException()
 
     def search(self, pattern):
         pattern = "%{}%".format(pattern)
@@ -154,11 +205,3 @@ class SQLite3Adapter(Adapter):
     def _add_fact(self, fact):
         with self._connection as cursor:
             cursor.execute("""INSERT INTO facts(name) VALUES (?)""", (fact,))
-
-    def __enter__(self):
-        return self
-
-    def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self._connection is not None:
-            self._connection.close()
-        raise exc_type(exc_val, exc_tb)
