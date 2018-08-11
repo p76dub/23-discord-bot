@@ -1,48 +1,80 @@
 # -*- coding: utf-8 -*-
 # !/usr/env python3
-import sqlite3
-
-import discord
-
 import re
 import tempfile
 import os
+
+import sqlite3
+import discord
 
 import adapter
 
 
 class TwentyThreeBot(discord.Client):
+    """
+    Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
+    on an Adapter for its commands.
+    """
 
-    def __init__(self, conf):
+    def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
+        """
+        Create a new bot with the provided configuration (dict-like). If no adapter class is
+        provided, the default one is :obj:`adapter.SQLite3Adapter`.
+
+        :param conf: a dict-like object providing configuration
+        :param adapter_class: a subclass of :obj:`adapter.Adapter`
+        """
         super(TwentyThreeBot, self).__init__()
         self.conf = conf
         self._commands = []
-        self._adapter = adapter.SQLite3Adapter(conf["db"])
+        self._adapter = adapter_class(conf["db"])
         self._load_commands()
 
     def _load_commands(self):
+        """
+        This method is just a tool for registering new commands.
+        """
         self._commands = [
             AddCommand(self._adapter, self),
             CategoriesCommand(self._adapter, self),
             ConsultCommand(self._adapter, self),
             SearchCommand(self._adapter, self),
             DownloadCommand(self._adapter, self),
-            PlaitCommand(self._adapter, self),
+            YopCommand(self._adapter, self),
             RemoveCommand(self._adapter, self),
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
     async def on_message(self, message):
+        """
+        This method is called when a message is published on a channel. Each registered command
+        is called with the message.
+
+        :param message: the published message
+        """
         for _command in self._commands:
             await _command.match(message)
 
     async def on_ready(self):
+        """
+        Called when the client (the bot) is connected to discord servers.
+        """
         print("---------------")
         print("Started as {} ({})".format(self.user.name, self.user.id))
         print("---------------")
 
 
 class AbstractCommand(object):
+    """
+    Main class for future commands. It defines several constants (error messages, not found ...)
+    The only things you need to redefine are :
+
+        * the class attribute COMMAND_PATTERN, which must be a compiled regex
+        * the class attribute COMMAND_NAME, (should match with the regex)
+        * the _do_match method
+        * the help static method, which should return a string
+
+    """
 
     COMMAND_PATTERN = re.compile(r"^.*$")
     CATEGORY_PATTERN = re.compile(r"^\[(\S+)\]$")
@@ -53,23 +85,51 @@ class AbstractCommand(object):
     DOUBLE_MSG = "Je n'accepte pas les doublons !! >:("
 
     def __init__(self, adapter, client):
+        """
+        Create a new AbstractCommand, with the provided adapter and client.
+
+        :param adapter: a valid adapter
+        :param client: a discord client
+        """
         self._adapter = adapter
         self._client = client
 
     async def match(self, msg):
+        """
+        If the message content matches the command regex, then the :meth:`_do_match` method is
+        called.
+
+        :param msg: the published message
+        """
         match = self.COMMAND_PATTERN.match(msg.content)
         if match:
             await self._do_match(match, msg)
 
     async def _do_match(self, match, msg):
+        """
+        Method called when the published message matches the command regex.
+
+        :param match: a Match object
+        :param msg: the original message
+        """
         raise NotImplementedError()
 
     @staticmethod
     def help():
+        """
+        Called when you want a help message about the command.
+
+        :return: an str
+        """
         return ""
 
 
 class AddCommand(AbstractCommand):
+    """
+    This command purpose is to add new facts to the database, in the provided category.
+    Command is : /23add CATEGORY FACT
+    If the message is successfully added, then all users are notified with the ADDED_MESSAGE.
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23add\s(\S+)\s(.+)$")
     ADDED_MESSAGE = "Le fait a bien été ajouté ! :D"
@@ -93,6 +153,11 @@ class AddCommand(AbstractCommand):
 
 
 class ConsultCommand(AbstractCommand):
+    """
+    This command allows database consulting. The command is : /23consult CATEGORY [LINE]. With
+    this command, users can display all registered facts for the provided category and, if a line is
+     provided, displays the fact located at this line.
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23consult\s(\S+)(\s(\d)+)?$")
     COMMAND_NAME = "23consult"
@@ -118,6 +183,10 @@ class ConsultCommand(AbstractCommand):
 
 
 class CategoriesCommand(AbstractCommand):
+    """
+    This command allows categories listing. Command is /23categories and display all registered
+    categories.
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23categories$")
     COMMAND_NAME = "23categories"
@@ -138,6 +207,13 @@ class CategoriesCommand(AbstractCommand):
 
 
 class SearchCommand(AbstractCommand):
+    """
+    This commands allows users to search for a pattern in available facts and displays matching
+    facts. The command is /23search PATTERN. Because the pattern is treated by the adapter,
+    you should not assume that it can be a regex.
+
+    Displayed results will highlight the pattern.
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23search\s(.+)$")
     COMMAND_NAME = "23search"
@@ -164,6 +240,19 @@ class SearchCommand(AbstractCommand):
 
 
 class DownloadCommand(AbstractCommand):
+    """
+    The download command allows users to download the current state of the database as a text
+    file with the following format :
+
+        [category]
+        1. fact ...
+        ...
+        i. fact ...
+        [category]
+        ...
+
+    The command is /23download
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23download$")
     COMMAND_NAME = "23download"
@@ -192,6 +281,11 @@ class DownloadCommand(AbstractCommand):
 
 
 class RemoveCommand(AbstractCommand):
+    """
+    The RemoveCommand allows users to remove a fact from a category or an entire category whether
+    the line argument is provided or not.
+    Command is : /23remove CATEGORY [LINE]
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23remove\s(\S+)(\s(\d)+)?$")
     FACT_REMOVED_MSG = "Le fait a été supprimé ! :D"
@@ -217,6 +311,14 @@ class RemoveCommand(AbstractCommand):
 
 
 class HelpCommand(AbstractCommand):
+    """
+    Help command displaying all other commands help or, if a specific command is requested,
+    this command's help.
+    You can call the HelpCommand like this : /23help [COMMAND]
+
+    Remember that, despite you are using /23help for calling the command, the command's name is
+    23help (same for other commands).
+    """
 
     COMMAND_PATTERN = re.compile(r"^/23help(\s(\S+))?$")
     COMMAND_NAME = "23help"
@@ -242,7 +344,10 @@ class HelpCommand(AbstractCommand):
                "sinon affiche celle de toutes les commandes disponibles (y compris celle-ci)."
 
 
-class PlaitCommand(AbstractCommand):
+class YopCommand(AbstractCommand):
+    """
+    This is a little command requested by Marshall-Ange. It just displays "lait !".
+    """
 
     COMMAND_PATTERN = re.compile(r"/yop")
     COMMAND_NAME = "yop"
