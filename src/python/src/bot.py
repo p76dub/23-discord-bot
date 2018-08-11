@@ -4,7 +4,6 @@ import re
 import tempfile
 import os
 
-import sqlite3
 import discord
 
 import adapter
@@ -15,6 +14,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
+    VERSION = "0.2"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -42,6 +42,7 @@ class TwentyThreeBot(discord.Client):
             DownloadCommand(self._adapter, self),
             YopCommand(self._adapter, self),
             RemoveCommand(self._adapter, self),
+            VersionCommand(self._adapter, self, self.VERSION)
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
@@ -358,6 +359,25 @@ class YopCommand(AbstractCommand):
     @staticmethod
     def help():
         return "**/yop**\tAffiche juste \"lait !\""
+
+
+class VersionCommand(AbstractCommand):
+    """
+    A small command for obtaining the current bot version.
+    """
+
+    COMMAND_PATTERN = re.compile(r"/23version")
+    COMMAND_NAME = "version"
+
+    def __init__(self, adapter, client, version):
+        super(VersionCommand, self).__init__(adapter, client)
+        self._version = version
+
+    async def _do_match(self, match, msg):
+        await self._client.send_message(
+            msg.channel,
+            "Je tourne sur BotOS v{}".format(self._version)
+        )
 
 
 if __name__ == '__main__':
