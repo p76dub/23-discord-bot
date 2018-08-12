@@ -6,6 +6,7 @@ import os
 import signal
 
 import discord
+from discord import ChannelType
 
 import adapter
 
@@ -71,7 +72,8 @@ class TwentyThreeBot(discord.Client):
         """
         for server in self.servers:
             for channel in server.channels:
-                await self.send_message(channel, "Je vais me coucher ! @+ !")
+                if channel.type == ChannelType.text:
+                    await self.send_message(channel, "Je vais me coucher ! @+ !")
         self.close()
         self.logout()
 
