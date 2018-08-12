@@ -401,10 +401,11 @@ if __name__ == '__main__':
     bot = TwentyThreeBot(conf)
     loop = asyncio.get_event_loop()
 
-    def handle_sigterm(e):
+    def exit_gracefully():
         raise KeyboardInterrupt()
 
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    loop.add_signal_handler(signal.SIGTERM, exit_gracefully)
+    loop.add_signal_handler(signal.SIGINT, exit_gracefully)
 
     try:
         loop.run_until_complete(bot.start(conf["token"]))
