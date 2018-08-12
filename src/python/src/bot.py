@@ -3,6 +3,7 @@
 import re
 import tempfile
 import os
+import signal
 
 import discord
 
@@ -14,7 +15,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2"
+    VERSION = "0.2.1"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -63,6 +64,16 @@ class TwentyThreeBot(discord.Client):
         print("---------------")
         print("Started as {} ({})".format(self.user.name, self.user.id))
         print("---------------")
+
+    async def stop(self):
+        """
+        Stop the bot as soon as possible.
+        """
+        for server in self.servers:
+            for channel in server.channels:
+                await self.send_message(channel, "Je vais me coucher ! @+ !")
+        self.close()
+        self.logout()
 
 
 class AbstractCommand(object):
@@ -381,9 +392,23 @@ class VersionCommand(AbstractCommand):
 
 
 if __name__ == '__main__':
+    import asyncio
+
     conf = {
         "db": os.environ["DB"],
         "token": os.environ["TOKEN"]
     }
     bot = TwentyThreeBot(conf)
-    bot.run(conf["token"])
+    loop = asyncio.get_event_loop()
+
+    def handle_sigterm(e):
+        raise KeyboardInterrupt()
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
+    try:
+        loop.run_until_complete(bot.start(conf["token"]))
+    except KeyboardInterrupt:
+        loop.run_until_complete(bot.stop())
+    finally:
+        loop.close()
