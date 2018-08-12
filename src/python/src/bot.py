@@ -4,11 +4,28 @@ import re
 import tempfile
 import os
 import signal
+import datetime
 
 import discord
 from discord import ChannelType
 
+import requests
+
 import adapter
+
+
+class _Timer(object):
+    def __init__(self, timeout, callback):
+        self._timeout = timeout
+        self._callback = callback
+        self._task = asyncio.ensure_future(self._job())
+
+    async def _job(self):
+        await asyncio.sleep(self._timeout)
+        await self._callback()
+
+    def cancel(self):
+        self._task.cancel()
 
 
 class TwentyThreeBot(discord.Client):
@@ -16,7 +33,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.1"
+    VERSION = "0.2.2"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -32,6 +49,37 @@ class TwentyThreeBot(discord.Client):
         self._adapter = adapter_class(conf["db"])
         self._load_commands()
 
+        now = datetime.datetime.now()
+        delta = (datetime.datetime(
+            year=now.year,
+            month=now.month,
+            day=now.day,
+            hour=23,
+            minute=23
+        ) - now).total_seconds()
+        self._timer = _Timer(delta, self._display_amen)
+
+    def _schedule(self):
+        self._timer = _Timer(24 * 60 * 60, self._display_amen)
+
+    async def _display_amen(self):
+        await self._send_message_to_servers("Amen !")
+        self._schedule()
+
+    async def _send_message_to_servers(self, message):
+        """
+        Send a message to all available channel.
+
+        :param message: the message
+        """
+        for server in self.servers:
+            for channel in server.channels:
+                if channel.type == ChannelType.text:
+                    await self.send_message(
+                        channel,
+                        message
+                    )
+
     def _load_commands(self):
         """
         This method is just a tool for registering new commands.
@@ -44,7 +92,8 @@ class TwentyThreeBot(discord.Client):
             DownloadCommand(self._adapter, self),
             YopCommand(self._adapter, self),
             RemoveCommand(self._adapter, self),
-            VersionCommand(self._adapter, self, self.VERSION)
+            VersionCommand(self._adapter, self, self.VERSION),
+            UploadCommand(self._adapter, self)
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
@@ -62,20 +111,15 @@ class TwentyThreeBot(discord.Client):
         """
         Called when the client (the bot) is connected to discord servers.
         """
-        print("---------------")
-        print("Started as {} ({})".format(self.user.name, self.user.id))
-        print("---------------")
+        await self._send_message_to_servers("Après une bonne sieste, retour au boulot ! :D")
 
     async def stop(self):
         """
         Stop the bot as soon as possible.
         """
-        for server in self.servers:
-            for channel in server.channels:
-                if channel.type == ChannelType.text:
-                    await self.send_message(channel, "Je vais me coucher ! @+ !")
-        self.close()
-        self.logout()
+        await self._send_message_to_servers("Je vais me coucher ! @+ !")
+        await self.close()
+        await self.logout()
 
 
 class AbstractCommand(object):
@@ -392,6 +436,37 @@ class VersionCommand(AbstractCommand):
             "Je tourne sur BotOS v{}".format(self._version)
         )
 
+    @staticmethod
+    def help():
+        return "**/23version**\tAffiche la version actuelle du bot"
+
+
+class UploadCommand(AbstractCommand):
+
+    COMMAND_PATTERN = re.compile(r"/23upload")
+    COMMAND_NAME = "upload"
+
+    async def _do_match(self, match, msg):
+        url = msg.attachments[0]["url"]
+        file = requests.get(url, stream=True).content.decode("UTF-8")
+        lines = file.split("\n")
+
+        category = None
+        for line in lines:
+            match = self.CATEGORY_PATTERN.match(line)
+            if match:
+                category = match.group(1)
+            elif category is not None and line != "":
+                try:
+                    self._adapter.add_fact(line[3:], [category])
+                except adapter.DuplicateException:
+                    pass
+
+    @staticmethod
+    def help():
+        return "**/23upload**\tEn ajoutant cette commande à un fichier texte téléversé, " \
+               "le fichier sera analysé et les faits ajoutés."
+
 
 if __name__ == '__main__':
     import asyncio
@@ -406,8 +481,11 @@ if __name__ == '__main__':
     def exit_gracefully():
         raise KeyboardInterrupt()
 
-    loop.add_signal_handler(signal.SIGTERM, exit_gracefully)
-    loop.add_signal_handler(signal.SIGINT, exit_gracefully)
+    try:
+        loop.add_signal_handler(signal.SIGTERM, exit_gracefully)
+        loop.add_signal_handler(signal.SIGINT, exit_gracefully)
+    except NotImplementedError:
+        pass  # not implemented on windows
 
     try:
         loop.run_until_complete(bot.start(conf["token"]))
