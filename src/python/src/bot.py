@@ -15,16 +15,33 @@ import adapter
 
 
 class _Timer(object):
+    """
+    Author: Mikhail Gerasimov (at https://stackoverflow.com/questions/45419723/python-timer-with
+    -asyncio-coroutine)
+    A timer working with the asyncio module.
+    """
     def __init__(self, timeout, callback):
+        """
+        Create and start a new timer, which will execute the callback in timeout seconds;
+
+        :param timeout: an amount of time (seconds)
+        :param callback: a callback function called when the timer reaches zero
+        """
         self._timeout = timeout
         self._callback = callback
         self._task = asyncio.ensure_future(self._job())
 
     async def _job(self):
+        """
+        Wait and execute the job
+        """
         await asyncio.sleep(self._timeout)
         await self._callback()
 
     def cancel(self):
+        """
+        Cancel the scheduled task.
+        """
         self._task.cancel()
 
 
@@ -54,17 +71,23 @@ class TwentyThreeBot(discord.Client):
             year=now.year,
             month=now.month,
             day=now.day,
-            hour=23,
+            hour=21,
             minute=23
         ) - now).total_seconds()
         self._timer = _Timer(delta, self._display_amen)
 
     def _schedule(self):
+        """
+        Reschedule the timer for the next time (24hours)
+        """
         self._timer = _Timer(24 * 60 * 60, self._display_amen)
 
     async def _display_amen(self):
-        await self._send_message_to_servers("Amen !")
+        """
+        A little priest every day
+        """
         self._schedule()
+        await self._send_message_to_servers("Amen !")
 
     async def _send_message_to_servers(self, message):
         """
@@ -442,6 +465,20 @@ class VersionCommand(AbstractCommand):
 
 
 class UploadCommand(AbstractCommand):
+    """
+    This command is designed to add a bunch of categories and facts stored in a text file. The
+    file must have the following format :
+
+        [CATEGORY]
+        1. fact
+        ...
+        n. fact
+        [CATEGORY]
+        1. fact
+        ...
+
+    Empty lines are ignored.
+    """
 
     COMMAND_PATTERN = re.compile(r"/23upload")
     COMMAND_NAME = "upload"
