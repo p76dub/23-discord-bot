@@ -50,7 +50,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.3"
+    VERSION = "0.2.4"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -116,7 +116,8 @@ class TwentyThreeBot(discord.Client):
             YopCommand(self._adapter, self),
             RemoveCommand(self._adapter, self),
             VersionCommand(self._adapter, self, self.VERSION),
-            UploadCommand(self._adapter, self)
+            UploadCommand(self._adapter, self),
+            FileSizeCommand(self._adapter, self),
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
@@ -505,6 +506,44 @@ class UploadCommand(AbstractCommand):
     def help():
         return "**/23upload**\tEn ajoutant cette commande à un fichier texte téléversé, " \
                "le fichier sera analysé et les faits ajoutés."
+
+
+class FileSizeCommand(AbstractCommand):
+    """
+    Get the current text file size. Command is /23size and returns a size in bytes.
+    """
+
+    COMMAND_NAME = "23size"
+    COMMAND_PATTERN = re.compile(r"^/23size$")
+
+    async def _do_match(self, match, msg):
+        try:
+            filename = self._create_file()
+            size = os.path.getsize(filename) / 1000
+            await self._client.send_message(msg.channel, "Taille actuelle : {0:.2f}ko".format(size))
+            os.remove(filename)
+        except Exception:
+            await self._client.send_message(msg.channel, self.ERROR_MSG)
+
+    def _create_file(self):
+        categories = self._adapter.list_categories()
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as _fd:
+            for category in categories:
+                _fd.write("[{}]\n".format(category))
+
+                facts = self._adapter.consult(category)
+                for i, fact in enumerate(facts):
+                    _fd.write("{}. {}\n".format(i + 1, fact))
+
+                _fd.write("\n")
+            filename = _fd.name
+
+        return filename
+
+    @staticmethod
+    def help():
+        return "**/23size**\tAffiche la taille courante du fichier texte généré."
 
 
 if __name__ == '__main__':
