@@ -50,7 +50,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.2"
+    VERSION = "0.2.3"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -63,7 +63,7 @@ class TwentyThreeBot(discord.Client):
         super(TwentyThreeBot, self).__init__()
         self.conf = conf
         self._commands = []
-        self._adapter = adapter_class(conf["db"])
+        self._adapter = adapter_class(**conf)
         self._load_commands()
 
         now = datetime.datetime.now()
@@ -223,6 +223,7 @@ class AddCommand(AbstractCommand):
         except adapter.DuplicateException:
             await self._client.send_message(msg.channel, self.DOUBLE_MSG)
         except Exception as e:
+            print(e)
             await self._client.send_message(msg.channel, self.ERROR_MSG)
         else:
             await self._client.send_message(msg.channel, self.ADDED_MESSAGE)
@@ -276,6 +277,7 @@ class CategoriesCommand(AbstractCommand):
         try:
             result = self._adapter.list_categories()
         except Exception as e:
+            print(e)
             await self._client.send_message(msg.channel, self.ERROR_MSG)
         else:
             if not result:
@@ -509,10 +511,12 @@ if __name__ == '__main__':
     import asyncio
 
     conf = {
-        "db": os.environ["DB"],
-        "token": os.environ["TOKEN"]
+        "user": os.environ["USER"],
+        "password": os.environ["PASSWORD"],
+        "database": os.environ["DB"],
+        "host": os.environ["HOST"]
     }
-    bot = TwentyThreeBot(conf)
+    bot = TwentyThreeBot(conf, adapter.MySQLAdapter)
     loop = asyncio.get_event_loop()
 
     def exit_gracefully():
@@ -525,7 +529,7 @@ if __name__ == '__main__':
         pass  # not implemented on windows
 
     try:
-        loop.run_until_complete(bot.start(conf["token"]))
+        loop.run_until_complete(bot.start(os.environ["TOKEN"]))
     except KeyboardInterrupt:
         loop.run_until_complete(bot.stop())
     finally:
