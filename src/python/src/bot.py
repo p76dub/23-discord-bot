@@ -224,7 +224,6 @@ class AddCommand(AbstractCommand):
         except adapter.DuplicateException:
             await self._client.send_message(msg.channel, self.DOUBLE_MSG)
         except Exception as e:
-            print(e)
             await self._client.send_message(msg.channel, self.ERROR_MSG)
         else:
             await self._client.send_message(msg.channel, self.ADDED_MESSAGE)
@@ -250,7 +249,11 @@ class ConsultCommand(AbstractCommand):
         if line_number is not None:
             line_number = int(line_number)
 
-        returned = self._adapter.consult(category, line_number)
+        try:
+            returned = self._adapter.consult(category, line_number)
+        except Exception:
+            await self._client.send_message(msg.channel, self.ERROR_MSG)
+            return
 
         if not returned:
             returned = [self.NOT_FOUND_MSG]
@@ -278,7 +281,6 @@ class CategoriesCommand(AbstractCommand):
         try:
             result = self._adapter.list_categories()
         except Exception as e:
-            print(e)
             await self._client.send_message(msg.channel, self.ERROR_MSG)
         else:
             if not result:
@@ -304,7 +306,12 @@ class SearchCommand(AbstractCommand):
 
     async def _do_match(self, match, msg):
         pattern = match.group(1)
-        result = self._adapter.search(pattern)
+        try:
+            result = self._adapter.search(pattern)
+        except Exception:
+            await self._client.send_message(msg.channel, self.ERROR_MSG)
+            return
+
         if len(result) == 0:
             result = [self.NOT_FOUND_MSG]
 
@@ -343,17 +350,21 @@ class DownloadCommand(AbstractCommand):
 
     async def _do_match(self, match, msg):
         # Get all categories
-        categories = self._adapter.list_categories()
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as _fd:
-            for category in categories:
-                _fd.write("[{}]\n".format(category))
+        try:
+            categories = self._adapter.list_categories()
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as _fd:
+                for category in categories:
+                    _fd.write("[{}]\n".format(category))
 
-                facts = self._adapter.consult(category)
-                for i, fact in enumerate(facts):
-                    _fd.write("{}. {}\n".format(i + 1, fact))
+                    facts = self._adapter.consult(category)
+                    for i, fact in enumerate(facts):
+                        _fd.write("{}. {}\n".format(i + 1, fact))
 
-                _fd.write("\n")
-            filename = _fd.name
+                    _fd.write("\n")
+                filename = _fd.name
+        except Exception:
+            await self._client.send_message(msg.channel, self.ERROR_MSG)
+            return
 
         await self._client.send_file(msg.channel, filename)
         os.remove(filename)
@@ -380,12 +391,15 @@ class RemoveCommand(AbstractCommand):
     async def _do_match(self, match, msg):
         category, line_number = match.group(1, 3)
 
-        if line_number is not None:
-            self._adapter.remove_fact(category, int(line_number))
-            await self._client.send_message(msg.channel, self.FACT_REMOVED_MSG)
-        else:
-            self._adapter.remove_category(category)
-            await self._client.send_message(msg.channel, self.CAT_REMOVED_MSG)
+        try:
+            if line_number is not None:
+                self._adapter.remove_fact(category, int(line_number))
+                await self._client.send_message(msg.channel, self.FACT_REMOVED_MSG)
+            else:
+                self._adapter.remove_category(category)
+                await self._client.send_message(msg.channel, self.CAT_REMOVED_MSG)
+        except Exception:
+            await self._client.send_message(msg.channel, self.ERROR_MSG)
 
     @staticmethod
     def help():
@@ -413,7 +427,6 @@ class HelpCommand(AbstractCommand):
 
     async def _do_match(self, match, msg):
         command = match.group(2)
-        print(command)
         if command is not None:
             for c in self._commands:
                 if c.COMMAND_NAME == command:
