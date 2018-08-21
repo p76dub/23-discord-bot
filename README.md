@@ -25,6 +25,11 @@ By default, we use the MYSQLAdapter so you need to provide :
   * **USER** the user the application will use to query the database
   * **PASSWORD** the password the application will use
 
+If you want to use the SQLite3Adapter, you only need to provide :
+
+  * **TOKEN** the discord application token
+  * **DB** the sqlite3 filename
+
 Once it's done, you just need to launch the bot.py file !
 
 ## Available commands

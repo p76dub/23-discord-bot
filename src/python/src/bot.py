@@ -50,7 +50,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.4"
+    VERSION = "0.2.4.1"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
