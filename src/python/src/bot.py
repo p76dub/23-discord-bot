@@ -50,7 +50,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.4.1"
+    VERSION = "0.2.4.2"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -135,13 +135,14 @@ class TwentyThreeBot(discord.Client):
         """
         Called when the client (the bot) is connected to discord servers.
         """
-        await self._send_message_to_servers("Après une bonne sieste, retour au boulot ! :D")
+        # await self._send_message_to_servers("Après une bonne sieste, retour au boulot ! :D")
+        pass
 
     async def stop(self):
         """
         Stop the bot as soon as possible.
         """
-        await self._send_message_to_servers("Je vais me coucher ! @+ !")
+        # await self._send_message_to_servers("Je vais me coucher ! @+ !")
         await self.close()
         await self.logout()
 
