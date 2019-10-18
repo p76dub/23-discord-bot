@@ -19,18 +19,20 @@ to run the bot. The bot is using environment variables for configuration
 purpose, like the database location and the discord application token.
 By default, we use the MYSQLAdapter so you need to provide :
 
-  * **DB** the db name
-  * **TOKEN** the discord application token
-  * **HOST** where the database is located to
-  * **USER** the user the application will use to query the database
-  * **PASSWORD** the password the application will use
+  * **DB** the database name (23facts for example)
+  * **TOKEN** the discord bot token (you'll need to create a bot [here](https://discordapp.com/developers/applications/)) 
+  * **HOST** where the database is located to (probably localhost)
+  * **USER** the user the application will use to query the database (the default mysql user is `root`)
+  * **PASSWORD** the password the application will use (By default there is no password for `root`)
+
+If you haven't the mysql library installed, you can run the command `pip install mysql-connector-python==8.0.11`
 
 If you want to use the SQLite3Adapter, you only need to provide :
 
   * **TOKEN** the discord application token
   * **DB** the sqlite3 filename
 
-Once it's done, you just need to launch the bot.py file !
+Once it's done, you just need to launch the bot.py file via your IDE or the command `python bot.py`
 
 ## Available commands
 **/23add CATEGORY FACT**: add a the fact **FACT** in he database,
