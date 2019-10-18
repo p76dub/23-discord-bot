@@ -9,6 +9,8 @@ import datetime
 import discord
 from discord import ChannelType
 
+from getpass import getpass
+
 import requests
 
 import adapter
@@ -50,7 +52,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.4.2"
+    VERSION = "0.2.4.3"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -559,9 +561,30 @@ class FileSizeCommand(AbstractCommand):
     def help():
         return "**/23size**\tAffiche la taille courante du fichier texte généré."
 
+def collectInfo():
+    if "USER" not in os.environ:
+        user = input("Enter the user name for the database: ")
+        os.environ["USER"] = user
+
+    if "PASSWORD" not in os.environ:
+        password = getpass("Enter the password: ")
+        os.environ["PASSWORD"] = password
+
+    if "DB" not in os.environ:
+        database = input("Enter the database name: ")
+        os.environ["DB"] = database
+   
+    if "HOST" not in os.environ:
+        host = input("Enter the location of your database: ")
+        os.environ["HOST"] = host
+    
+    if "TOKEN" not in os.environ:
+        token = input("Enter the bot's token: ")
+        os.environ["TOKEN"] = token
 
 if __name__ == '__main__':
     import asyncio
+    collectInfo()
 
     conf = {
         "user": os.environ["USER"],
