@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sqlite3
 import mysql.connector as mysql
+import commands as sqlQueries
 
 
 class Adapter(object):
@@ -221,40 +222,13 @@ class MySQLAdapter(Adapter):
 
     def _create_database(self):
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
-                       id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                       name VARCHAR(255) NOT NULL UNIQUE)""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS facts (
-                       id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                       name VARCHAR(255) NOT NULL UNIQUE)""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS entries (
-                       id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                       category_id INTEGER,
-                       fact_id INTEGER,
-                       CONSTRAINT FK_ENTRY_CATEGORY FOREIGN KEY(category_id) REFERENCES 
-                       categories(id) ON DELETE CASCADE,
-                       CONSTRAINT FK_ENTRY_FACT FOREIGN KEY(fact_id) REFERENCES facts(id)
-                       ON DELETE CASCADE,
-                       CONSTRAINT UN_CATEGORY_FACT UNIQUE (category_id, fact_id))""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS urls (
-                       id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                       url VARCHAR(255) NOT NULL)""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS fact_references (
-                       id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                       fact_id INTEGER,
-                       url_id INTEGER,
-                       CONSTRAINT FK_REFERENCE_FACT FOREIGN KEY(fact_id) REFERENCES facts(
-                       id),
-                       CONSTRAINT FK_REFERENCE_URL FOREIGN KEY(url_id) REFERENCES urls(id))""")
+        cursor.execute(sqlQueries.mysql_create_table_categories())
+        cursor.execute(sqlQueries.mysql_create_table_facts())
+        cursor.execute(sqlQueries.mysql_create_table_entries())
+        cursor.execute(sqlQueries.mysql_create_table_urls())
+        cursor.execute(sqlQueries.mysql_create_table_fact_references())
         try:
-            cursor.execute("""CREATE TRIGGER TG_DELETE_FACTS
-                       AFTER DELETE ON entries
-                       FOR EACH ROW 
-                       BEGIN
-                          IF (SELECT count(*) FROM entries WHERE fact_id = OLD.fact_id) = 0 THEN
-                              DELETE FROM facts WHERE facts.id = OLD.fact_id;
-                          END IF;
-                       END;""")
+            cursor.execute(sqlQueries.mysql_create_trigger())
         except mysql.ProgrammingError:
             pass
         finally:
@@ -276,11 +250,7 @@ class MySQLAdapter(Adapter):
         cursor = self._connection.cursor(buffered=True)
         try:
             for category in categories:
-                cursor.execute("""INSERT INTO entries(fact_id, category_id)
-                               SELECT facts.id, categories.id
-                               FROM facts, categories
-                               WHERE facts.name = %s AND categories.name = %s""",
-                               (fact, category))
+                cursor.execute(sqlQueries.mysql_insert_entries(fact, category))
             self._connection.commit()
         except mysql.IntegrityError:
             raise DuplicateException()
@@ -290,10 +260,7 @@ class MySQLAdapter(Adapter):
     def remove_fact(self, category, line_number):
         fact_name = self.consult(category, line_number)[0]
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute("""DELETE FROM entries
-                          WHERE fact_id = (SELECT id FROM facts WHERE name = %s)
-                          AND category_id = (SELECT id FROM categories WHERE name = %s)""",
-                       (fact_name, category))
+        cursor.execute(sqlQueries.mysql_delete_entries(fact_name, category))
         self._connection.commit()
         cursor.close()
 
