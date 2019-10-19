@@ -250,7 +250,7 @@ class MySQLAdapter(Adapter):
         cursor = self._connection.cursor(buffered=True)
         try:
             for category in categories:
-                cursor.execute(sqlQueries.mysql_insert_entries(fact, category))
+                cursor.execute(sqlQueries.mysql_insert_entries(), (fact, category))
             self._connection.commit()
         except mysql.IntegrityError:
             raise DuplicateException()
@@ -260,14 +260,14 @@ class MySQLAdapter(Adapter):
     def remove_fact(self, category, line_number):
         fact_name = self.consult(category, line_number)[0]
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute(sqlQueries.mysql_delete_entries(fact_name, category))
+        cursor.execute(sqlQueries.mysql_delete_entries(), (fact_name, category))
         self._connection.commit()
         cursor.close()
 
     def add_category(self, category):
         cursor = self._connection.cursor(buffered=True)
         try:
-            cursor.execute("""INSERT INTO categories(name) VALUES (%s)""", (category,))
+            cursor.execute(sqlQueries.mysql_insert_category(), (category,))
             self._connection.commit()
         except mysql.IntegrityError:
             raise DuplicateException()
@@ -278,7 +278,7 @@ class MySQLAdapter(Adapter):
         pattern = "%{}%".format(pattern)
 
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute("""SELECT name FROM facts WHERE name LIKE %s""", (pattern,))
+        cursor.execute(sqlQueries.mysql_select_fact_names(), (pattern,))
         result = cursor.fetchall()
 
         cursor.close()
@@ -286,22 +286,16 @@ class MySQLAdapter(Adapter):
 
     def list_categories(self):
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute("""SELECT name FROM categories""")
+        cursor.execute(sqlQueries.mysql_select_category_names())
         result = cursor.fetchall()
 
         cursor.close()
         return [r[0] for r in result]
 
     def consult(self, category, fact_position=None):
-        query = """SELECT facts.name
-                   FROM facts, entries, categories
-                   WHERE categories.name = %s AND categories.id = entries.category_id
-                   AND facts.id = entries.fact_id
-                   """
+        query = sqlQueries.mysql_select_facts_by_category()
         if fact_position is not None:
-            query += """ORDER BY facts.id ASC
-                     LIMIT 1
-                     OFFSET ?"""
+            query += sqlQueries.mysql_select_unique_fact()
 
         cursor = self._connection.cursor(buffered=True)
         if fact_position is not None:
@@ -315,12 +309,12 @@ class MySQLAdapter(Adapter):
 
     def remove_category(self, category):
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute("""DELETE FROM categories WHERE name = %s""", (category,))
+        cursor.execute(sqlQueries.mysql_delete_category(), (category,))
         self._connection.commit()
         cursor.close()
 
     def _add_fact(self, fact):
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute("""INSERT INTO facts(name) VALUES (%s)""", (fact,))
+        cursor.execute(sqlQueries.mysql_insert_fact(), (fact,))
         self._connection.commit()
         cursor.close()

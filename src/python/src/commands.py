@@ -46,14 +46,38 @@ def mysql_create_trigger():
                 END IF;
               END;"""
 
-def mysql_insert_entries(fact, category):
+def mysql_insert_entries():
     return """INSERT INTO entries(fact_id, category_id)
               SELECT facts.id, categories.id
               FROM facts, categories
-              WHERE facts.name = %s AND categories.name = %s""", (fact, category)
+              WHERE facts.name = %s AND categories.name = %s"""
 
-def mysql_delete_entries(fact_name, category):
+def mysql_delete_entries():
     return """DELETE FROM entries
               WHERE fact_id = (SELECT id FROM facts WHERE name = %s)
-              AND category_id = (SELECT id FROM categories WHERE name = %s)""", (fact_name, category)
+              AND category_id = (SELECT id FROM categories WHERE name = %s)"""
               
+def mysql_insert_category():
+    return """INSERT INTO categories(name) VALUES (%s)"""
+
+def mysql_select_fact_names():
+    return """SELECT name FROM facts WHERE name LIKE %s"""
+
+def mysql_select_category_names():
+    return """SELECT name FROM categories"""
+
+def mysql_select_facts_by_category():
+    return """SELECT facts.name
+              FROM facts, entries, categories
+              WHERE categories.name = %s AND categories.id = entries.category_id
+              AND facts.id = entries.fact_id
+              """
+def mysql_select_unique_fact():
+    return """ORDER BY facts.id ASC
+              LIMIT 1
+              OFFSET ?"""
+def mysql_delete_category():
+    return """DELETE FROM categories WHERE name = %s"""
+
+def mysql_insert_fact():
+    return """INSERT INTO facts(name) VALUES (%s)"""
