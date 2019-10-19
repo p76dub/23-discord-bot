@@ -120,6 +120,7 @@ class TwentyThreeBot(discord.Client):
             VersionCommand(self._adapter, self, self.VERSION),
             UploadCommand(self._adapter, self),
             FileSizeCommand(self._adapter, self),
+            FastAddCommand(self._adapter, self),
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
@@ -440,7 +441,7 @@ class HelpCommand(AbstractCommand):
 
     @staticmethod
     def help():
-        return "**/23help [COMMAND]**\tSi COMMAND est spécifié, affiche l'aide de la commande, " \
+        return "**/23help [COMMAND]**\tSi COMMAND est spécifié (une des commandes ci-dessus sans le '/'), affiche l'aide de la commande, " \
                "sinon affiche celle de toutes les commandes disponibles (y compris celle-ci)."
 
 
@@ -466,7 +467,7 @@ class VersionCommand(AbstractCommand):
     """
 
     COMMAND_PATTERN = re.compile(r"/23version")
-    COMMAND_NAME = "version"
+    COMMAND_NAME = "23version"
 
     def __init__(self, adapter, client, version):
         super(VersionCommand, self).__init__(adapter, client)
@@ -500,7 +501,36 @@ class UploadCommand(AbstractCommand):
     """
 
     COMMAND_PATTERN = re.compile(r"/23upload")
-    COMMAND_NAME = "upload"
+    COMMAND_NAME = "23upload"
+
+    async def _do_match(self, match, msg):
+        await self._client.send_message(
+            msg.channel,
+            "Ce message m'a été envoyé : " + msg
+        )
+
+    @staticmethod
+    def help():
+        return "**/23upload**\tEn ajoutant cette commande à un fichier texte téléversé, " \
+               "le fichier sera analysé et les faits ajoutés."
+
+
+class FastAddCommand(AbstractCommand):
+    """
+    Allows to add quickly all the facts from a file by copying all the 
+    data in the discord chat with the following format :
+    - CATEGORY_NAME1
+    FACT1
+    FACT2
+    ...
+
+    - CATEGORY_NAME2
+    FACT1
+    FACT2
+    """
+
+    COMMAND_NAME = "23fastadd"
+    COMMAND_PATTERN = re.compile(r"^/23fastadd$")
 
     async def _do_match(self, match, msg):
         url = msg.attachments[0]["url"]
@@ -520,9 +550,9 @@ class UploadCommand(AbstractCommand):
 
     @staticmethod
     def help():
-        return "**/23upload**\tEn ajoutant cette commande à un fichier texte téléversé, " \
-               "le fichier sera analysé et les faits ajoutés."
-
+        return "**/23fastadd**\tCette commande permet d'ajouter des faits rapidement, " \
+               "en copiant le contenu du fichier texte dans le chat discord avec le format :" \
+               " - CATEGORIE1 \nFAIT1 \nFAIT2 \n... \n\n - CATEGORIE2 \nFAIT3 \nFAIT4 \n..."
 
 class FileSizeCommand(AbstractCommand):
     """
