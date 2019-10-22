@@ -105,9 +105,7 @@ class SQLite3Adapter(Adapter):
 
     def _create_database(self):
         with self._connection as cursor:
-            cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
-                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           name TEXT NOT NULL UNIQUE)""")
+            cursor.execute(sqlQueries.create_table_categories(True))
             cursor.execute("""CREATE TABLE IF NOT EXISTS facts (
                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                            name TEXT NOT NULL UNIQUE)""")
@@ -222,7 +220,7 @@ class MySQLAdapter(Adapter):
 
     def _create_database(self):
         cursor = self._connection.cursor(buffered=True)
-        cursor.execute(sqlQueries.mysql_create_table_categories())
+        cursor.execute(sqlQueries.create_table_categories(False))
         cursor.execute(sqlQueries.mysql_create_table_facts())
         cursor.execute(sqlQueries.mysql_create_table_entries())
         cursor.execute(sqlQueries.mysql_create_table_urls())

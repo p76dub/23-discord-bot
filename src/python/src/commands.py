@@ -1,11 +1,16 @@
 
 # Mysql Commands
 
-def mysql_create_table_categories():
-    return """CREATE TABLE IF NOT EXISTS categories (
-                id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                name VARCHAR(255) NOT NULL UNIQUE
-              )"""
+def create_table_categories(sqlite):
+    autoincrement, string_type = "AUTO_INCREMENT", "VARCHAR(255)"
+    if (sqlite):
+        autoincrement = "AUTOINCREMENT"
+        string_type = "TEXT"
+    query = "CREATE TABLE IF NOT EXISTS categories ("
+    query += "id INTEGER PRIMARY KEY " + autoincrement + ","
+    query += "name " + string_type + " NOT NULL UNIQUE)"            
+    
+    return query
     
 def mysql_create_table_facts():
     return """CREATE TABLE IF NOT EXISTS facts (

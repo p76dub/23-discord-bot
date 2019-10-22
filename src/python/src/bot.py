@@ -504,10 +504,20 @@ class UploadCommand(AbstractCommand):
     COMMAND_NAME = "23upload"
 
     async def _do_match(self, match, msg):
-        await self._client.send_message(
-            msg.channel,
-            "Ce message m'a été envoyé : " + msg
-        )
+        url = msg.attachments[0]["url"]
+        file = requests.get(url, stream=True).content.decode("UTF-8")
+        lines = file.split("\n")
+
+        category = None
+        for line in lines:
+            match = self.CATEGORY_PATTERN.match(line)
+            if match:
+                category = match.group(1)
+            elif category is not None and line != "":
+                try:
+                    self._adapter.add_fact(line[3:], [category])
+                except adapter.DuplicateException:
+                    pass
 
     @staticmethod
     def help():
@@ -533,24 +543,14 @@ class FastAddCommand(AbstractCommand):
     COMMAND_PATTERN = re.compile(r"^/23fastadd$")
 
     async def _do_match(self, match, msg):
-        url = msg.attachments[0]["url"]
-        file = requests.get(url, stream=True).content.decode("UTF-8")
-        lines = file.split("\n")
-
-        category = None
-        for line in lines:
-            match = self.CATEGORY_PATTERN.match(line)
-            if match:
-                category = match.group(1)
-            elif category is not None and line != "":
-                try:
-                    self._adapter.add_fact(line[3:], [category])
-                except adapter.DuplicateException:
-                    pass
+        await self._client.send_message(
+            msg.channel,
+            "Ce message m'a été envoyé : " + match.group(2)
+        )
 
     @staticmethod
     def help():
-        return "**/23fastadd**\tCette commande permet d'ajouter des faits rapidement, " \
+        return "**/23fastadd [TEXT]**\tCette commande permet d'ajouter des faits rapidement, " \
                "en copiant le contenu du fichier texte dans le chat discord avec le format :" \
                " - CATEGORIE1 \nFAIT1 \nFAIT2 \n... \n\n - CATEGORIE2 \nFAIT3 \nFAIT4 \n..."
 
