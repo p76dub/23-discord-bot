@@ -1,48 +1,66 @@
+# Language differences between sqlite and mysql
 
-# Mysql Commands
+def get_autoincrement(sqlite):
+    if (sqlite):
+        return "AUTOINCREMENT"
+    else:
+        return "AUTO_INCREMENT"
+
+def get_string_type(sqlite):
+    if (sqlite):
+        return "TEXT"
+    else:
+        return "VARCHAR(255)"
+
+# Sql Commands
 
 def create_table_categories(sqlite):
-    autoincrement, string_type = "AUTO_INCREMENT", "VARCHAR(255)"
-    if (sqlite):
-        autoincrement = "AUTOINCREMENT"
-        string_type = "TEXT"
     query = "CREATE TABLE IF NOT EXISTS categories ("
-    query += "id INTEGER PRIMARY KEY " + autoincrement + ","
-    query += "name " + string_type + " NOT NULL UNIQUE)"            
+    query += "id INTEGER PRIMARY KEY " + get_autoincrement(sqlite) + ","
+    query += "name " + get_string_type(sqlite) + " NOT NULL UNIQUE)"            
     
     return query
     
-def mysql_create_table_facts():
-    return """CREATE TABLE IF NOT EXISTS facts (
-                id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                name VARCHAR(255) NOT NULL UNIQUE
-              )"""
+def create_table_facts(sqlite):
+    query = "CREATE TABLE IF NOT EXISTS facts ("
+    query += "id INTEGER PRIMARY KEY " + get_autoincrement(sqlite) + ","
+    query += "name " + get_string_type(sqlite) + " NOT NULL UNIQUE)"
 
-def mysql_create_table_entries():
-    return """CREATE TABLE IF NOT EXISTS entries (
-                id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                category_id INTEGER,
-                fact_id INTEGER,
-                CONSTRAINT FK_ENTRY_CATEGORY FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE,
-                CONSTRAINT FK_ENTRY_FACT FOREIGN KEY(fact_id) REFERENCES facts(id) ON DELETE CASCADE,
-                CONSTRAINT UN_CATEGORY_FACT UNIQUE (category_id, fact_id)
-              )"""
-def mysql_create_table_urls():
-    return """CREATE TABLE IF NOT EXISTS urls (
-                id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                url VARCHAR(255) NOT NULL)"""
+    return query
 
-def mysql_create_table_fact_references():
-    return """CREATE TABLE IF NOT EXISTS fact_references (
-                id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                fact_id INTEGER,
-                url_id INTEGER,
-                CONSTRAINT FK_REFERENCE_FACT FOREIGN KEY(fact_id) REFERENCES facts(id),
-                CONSTRAINT FK_REFERENCE_URL FOREIGN KEY(url_id) REFERENCES urls(id)
-              )"""
+def create_table_entries(sqlite):
+    query = "CREATE TABLE IF NOT EXISTS entries ("
+    query += "id INTEGER PRIMARY KEY " + get_autoincrement(sqlite) + ","
+    query += "category_id INTEGER, fact_id INTEGER,"
+    query += "CONSTRAINT FK_ENTRY_CATEGORY FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE,"
+    query += "CONSTRAINT FK_ENTRY_FACT FOREIGN KEY(fact_id) REFERENCES facts(id) ON DELETE CASCADE,"
+    query += "CONSTRAINT UN_CATEGORY_FACT UNIQUE (category_id, fact_id))"
+    
+    return query
 
-def mysql_create_trigger():
-    return """CREATE TRIGGER TG_DELETE_FACTS
+def create_table_urls(sqlite):
+    query = "CREATE TABLE IF NOT EXISTS urls ("
+    query += "id INTEGER PRIMARY KEY " + get_autoincrement(sqlite) + ","
+    query += "name " + get_string_type(sqlite) + " NOT NULL UNIQUE)"
+
+    return query
+
+def create_table_fact_references(sqlite):
+    query = "CREATE TABLE IF NOT EXISTS fact_references ("
+    query += "id INTEGER PRIMARY KEY " + get_autoincrement(sqlite) + ","
+    query += "fact_id INTEGER, url_id INTEGER,"
+    query += "CONSTRAINT FK_REFERENCE_FACT FOREIGN KEY(fact_id) REFERENCES facts(id),"
+    query += "CONSTRAINT FK_REFERENCE_URL FOREIGN KEY(url_id) REFERENCES urls(id))"
+    return query
+
+def create_trigger(sqlite):
+    if (sqlite):
+        return """CREATE TRIGGER IF NOT EXISTS TG_DELETE_FACTS
+                  AFTER DELETE ON entries
+                  WHEN (SELECT count() FROM entries WHERE fact_id == old.fact_id) == 0
+                  BEGIN DELETE FROM facts WHERE facts.id == old.fact_id; END"""
+    else: 
+        return """CREATE TRIGGER TG_DELETE_FACTS
               AFTER DELETE ON entries
               FOR EACH ROW 
               BEGIN

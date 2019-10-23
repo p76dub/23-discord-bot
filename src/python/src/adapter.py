@@ -106,32 +106,11 @@ class SQLite3Adapter(Adapter):
     def _create_database(self):
         with self._connection as cursor:
             cursor.execute(sqlQueries.create_table_categories(True))
-            cursor.execute("""CREATE TABLE IF NOT EXISTS facts (
-                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           name TEXT NOT NULL UNIQUE)""")
-            cursor.execute("""CREATE TABLE IF NOT EXISTS entries (
-                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           category_id INTEGER,
-                           fact_id INTEGER,
-                           CONSTRAINT FK_ENTRY_CATEGORY FOREIGN KEY(category_id) REFERENCES 
-                           categories(id) ON DELETE CASCADE,
-                           CONSTRAINT FK_ENTRY_FACT FOREIGN KEY(fact_id) REFERENCES facts(id)
-                           ON DELETE CASCADE,
-                           CONSTRAINT UN_CATEGORY_FACT UNIQUE (category_id, fact_id))""")
-            cursor.execute("""CREATE TABLE IF NOT EXISTS urls (
-                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           url TEXT NOT NULL)""")
-            cursor.execute("""CREATE TABLE IF NOT EXISTS fact_references (
-                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           fact_id INTEGER,
-                           url_id INTEGER,
-                           CONSTRAINT FK_REFERENCE_FACT FOREIGN KEY(fact_id) REFERENCES facts(
-                           id),
-                           CONSTRAINT FK_REFERENCE_URL FOREIGN KEY(url_id) REFERENCES urls(id))""")
-            cursor.execute("""CREATE TRIGGER IF NOT EXISTS TG_DELETE_FACTS
-                           AFTER DELETE ON entries
-                           WHEN (SELECT count() FROM entries WHERE fact_id == old.fact_id) == 0
-                           BEGIN DELETE FROM facts WHERE facts.id == old.fact_id; END""")
+            cursor.execute(sqlQueries.create_table_facts(True))
+            cursor.execute(sqlQueries.create_table_entries(True))
+            cursor.execute(sqlQueries.create_table_urls(True))
+            cursor.execute(sqlQueries.create_table_references(True))
+            cursor.execute(sqlQueries.create_trigger(True))
 
     def add_fact(self, fact, categories):
         try:
@@ -221,12 +200,12 @@ class MySQLAdapter(Adapter):
     def _create_database(self):
         cursor = self._connection.cursor(buffered=True)
         cursor.execute(sqlQueries.create_table_categories(False))
-        cursor.execute(sqlQueries.mysql_create_table_facts())
-        cursor.execute(sqlQueries.mysql_create_table_entries())
-        cursor.execute(sqlQueries.mysql_create_table_urls())
-        cursor.execute(sqlQueries.mysql_create_table_fact_references())
+        cursor.execute(sqlQueries.create_table_facts(False))
+        cursor.execute(sqlQueries.create_table_entries(False))
+        cursor.execute(sqlQueries.create_table_urls(False))
+        cursor.execute(sqlQueries.create_table_fact_references(False))
         try:
-            cursor.execute(sqlQueries.mysql_create_trigger())
+            cursor.execute(sqlQueries.create_trigger(False))
         except mysql.ProgrammingError:
             pass
         finally:
