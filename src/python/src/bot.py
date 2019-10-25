@@ -9,6 +9,8 @@ import datetime
 import discord
 from discord import ChannelType
 
+from getpass import getpass
+
 import requests
 
 import adapter
@@ -50,7 +52,7 @@ class TwentyThreeBot(discord.Client):
     Main bot class. For command registering: use the :meth:`_load_commands`. The bot is relying
     on an Adapter for its commands.
     """
-    VERSION = "0.2.4.2"
+    VERSION = "0.2.4.3"
 
     def __init__(self, conf, adapter_class=adapter.SQLite3Adapter):
         """
@@ -118,6 +120,7 @@ class TwentyThreeBot(discord.Client):
             VersionCommand(self._adapter, self, self.VERSION),
             UploadCommand(self._adapter, self),
             FileSizeCommand(self._adapter, self),
+            FastAddCommand(self._adapter, self),
         ]
         self._commands.append(HelpCommand(self._adapter, self, self._commands))
 
@@ -438,7 +441,7 @@ class HelpCommand(AbstractCommand):
 
     @staticmethod
     def help():
-        return "**/23help [COMMAND]**\tSi COMMAND est spécifié, affiche l'aide de la commande, " \
+        return "**/23help [COMMAND]**\tSi COMMAND est spécifié (une des commandes ci-dessus sans le '/'), affiche l'aide de la commande, " \
                "sinon affiche celle de toutes les commandes disponibles (y compris celle-ci)."
 
 
@@ -464,7 +467,7 @@ class VersionCommand(AbstractCommand):
     """
 
     COMMAND_PATTERN = re.compile(r"/23version")
-    COMMAND_NAME = "version"
+    COMMAND_NAME = "23version"
 
     def __init__(self, adapter, client, version):
         super(VersionCommand, self).__init__(adapter, client)
@@ -498,7 +501,7 @@ class UploadCommand(AbstractCommand):
     """
 
     COMMAND_PATTERN = re.compile(r"/23upload")
-    COMMAND_NAME = "upload"
+    COMMAND_NAME = "23upload"
 
     async def _do_match(self, match, msg):
         url = msg.attachments[0]["url"]
@@ -521,6 +524,35 @@ class UploadCommand(AbstractCommand):
         return "**/23upload**\tEn ajoutant cette commande à un fichier texte téléversé, " \
                "le fichier sera analysé et les faits ajoutés."
 
+
+class FastAddCommand(AbstractCommand):
+    """
+    Allows to add quickly all the facts from a file by copying all the 
+    data in the discord chat with the following format :
+    - CATEGORY_NAME1
+    FACT1
+    FACT2
+    ...
+
+    - CATEGORY_NAME2
+    FACT1
+    FACT2
+    """
+
+    COMMAND_NAME = "23fastadd"
+    COMMAND_PATTERN = re.compile(r"^/23fastadd$")
+
+    async def _do_match(self, match, msg):
+        await self._client.send_message(
+            msg.channel,
+            "Ce message m'a été envoyé : " + match.group(2)
+        )
+
+    @staticmethod
+    def help():
+        return "**/23fastadd [TEXT]**\tCette commande permet d'ajouter des faits rapidement, " \
+               "en copiant le contenu du fichier texte dans le chat discord avec le format :" \
+               " - CATEGORIE1 \nFAIT1 \nFAIT2 \n... \n\n - CATEGORIE2 \nFAIT3 \nFAIT4 \n..."
 
 class FileSizeCommand(AbstractCommand):
     """
@@ -559,9 +591,30 @@ class FileSizeCommand(AbstractCommand):
     def help():
         return "**/23size**\tAffiche la taille courante du fichier texte généré."
 
+def collectInfo():
+    if "USER" not in os.environ:
+        user = input("Enter the user name for the database: ")
+        os.environ["USER"] = user
+
+    if "PASSWORD" not in os.environ:
+        password = getpass("Enter the password: ")
+        os.environ["PASSWORD"] = password
+
+    if "DB" not in os.environ:
+        database = input("Enter the database name: ")
+        os.environ["DB"] = database
+   
+    if "HOST" not in os.environ:
+        host = input("Enter the location of your database: ")
+        os.environ["HOST"] = host
+    
+    if "TOKEN" not in os.environ:
+        token = input("Enter the bot's token: ")
+        os.environ["TOKEN"] = token
 
 if __name__ == '__main__':
     import asyncio
+    collectInfo()
 
     conf = {
         "user": os.environ["USER"],
